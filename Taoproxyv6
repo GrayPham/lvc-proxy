@@ -102,7 +102,7 @@ gen_data() {
 
         # Nếu PASS=1 thì dùng password cố định, ngược lại dùng random
         if [ "$PASS" -eq 1 ]; then
-            echo "${USER_PORT}${port}/LVCmedia123/$IP4/$port/$ipv6"
+            echo "${USER_PORT}/LVCmedia123/$IP4/$port/$ipv6"
         else
             echo "${USER_PORT}${port}/$(random)/$IP4/$port/$ipv6"
         fi
@@ -110,7 +110,7 @@ gen_data() {
 	V4Port=$((LAST_PORT + 1))
 	# Áp dụng logic tương tự cho proxy IPv4
 	if [ "$PASS" -eq 1 ]; then
-	    echo "${USER_PORT}${V4Port}/LVCmedia123/$IP4/$V4Port/$IP4"
+	    echo "${USER_PORT}/LVCmedia123/$IP4/$V4Port/$IP4"
 	else
 	    echo "${USER_PORT}${V4Port}/$(random)/$IP4/$V4Port/$IP4"
 	fi
