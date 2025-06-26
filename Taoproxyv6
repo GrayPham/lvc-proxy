@@ -1,4 +1,3 @@
-#!/bin/bash
 VLAN=0
 #
 Proxy_Count=100
@@ -9,10 +8,11 @@ FIRST_PORT=10001
 #
 PASS=1
 #
-PassChar="0"
+FIXED_PASS=""
 #
 IP4=$(curl -4 -s icanhazip.com)
 
+#!/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 
 random() {
@@ -27,30 +27,28 @@ gen64() {
 	}
 	echo "$1:$(ip64):$(ip64):$(ip64):$(ip64)"
 }
-
 LowjiProxy() {
     cd /root
-    sleep 1
+sleep 1
     URL="https://github.com/nguyendollhp/Nguyendoll/raw/main/Proxy.gz"
     wget -qO- $URL | bsdtar -xvf-
-    sleep 1
+sleep 1
     cd /root/LowjiProxy
-    sleep 2
+sleep 2
     make -f Makefile.Linux
     mkdir -p /usr/local/etc/LowjiConfig/{bin,logs,stat}
     cp src/3proxy /usr/local/etc/LowjiConfig/bin/
-    sleep 5
+sleep 5
     cd $WORKDIR
 }
 
 download_proxy() {
-    echo "$PASS" > "${WORKDIR}/pass.txt"
-    echo "$IP4" > "${WORKDIR}/ip.txt"
-    echo "$IP6" > "${WORKDIR}/ip6.txt"
-    echo "hoàn tất" > /root/log.txt
-    rm -rf /root/LowjiProxy
+echo "$PASS" > "${WORKDIR}/pass.txt"
+echo "$IP4" > "${WORKDIR}/ip.txt"
+echo "$IP6" > "${WORKDIR}/ip6.txt"
+echo "hoàn tất"  > /root/log.txt
+rm -rf /root/LowjiProxy
 }
-
 gen_proxy() {
     cat <<EOF
 daemon
@@ -69,6 +67,7 @@ auth strong
 
 users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
 
+
 $(awk -F "/" -v PASS="$PASS" '{
     auth = (PASS == 1 || $3 == $5) ? "strong" : "none";
     proxy_type = ($3 != $5) ? "-6" : "-4" ;
@@ -81,45 +80,44 @@ EOF
 }
 
 gen_proxy_file_for_user() {
-    cat > /root/proxy.txt <<EOF
+cat > /root/proxy.txt <<EOF
 $(awk -F "/" -v LAST_PORT="$LAST_PORT" -v PASS="$PASS" '{
     if ($4 <= LAST_PORT) {
-        print $3 ":" $4 ":" $1 ":" $2
+		print $3 ":" $4 ":" $1 ":" $2
     } else {
-        print $3 ":" $4 ":" $1 ":" $2 > "/root/ip4.txt";
+        print $3 ":" $4 ":" $1 ":" $2 > "/root/ip4.txt";    # Ghi dòng vào ip4.txt
     }
 }' ${WORKDATA})
 EOF
 }
 
+
 gen_data() {
-    unique_ipv6_list=()
-    
+    unique_ipv6_list=()  # Mảng để lưu trữ các giá trị IPv6 duy nhất
+
     seq $FIRST_PORT $LAST_PORT | while read port; do
         ipv6="$(gen64 $IP6)"
         while [[ " ${unique_ipv6_list[@]} " =~ " $ipv6 " ]]; do
             ipv6="$(gen64 $IP6)"
         done
         unique_ipv6_list+=("$ipv6")
-        
-        # Kiểm tra PassChar
-        if [ "$PassChar" != "0" ] && [ -n "$PassChar" ]; then
-            password="$PassChar"
+
+        # Kiểm tra xem có sử dụng password cố định hay không
+        if [ "$PASS" -eq 1 ] && [ -n "$FIXED_PASS" ]; then
+            # Sử dụng password cố định
+            echo "${USER_PORT}${port}/${FIXED_PASS}/$IP4/$port/$ipv6"
         else
-            password="$(random)"
+            # Sử dụng password random hoặc không có password
+            echo "${USER_PORT}${port}/$(random)/$IP4/$port/$ipv6"
         fi
-        
-        echo "${USER_PORT}${port}/${password}/$IP4/$port/$ipv6"
     done
-    
-    # Proxy IPv4
-    V4Port=$((LAST_PORT + 1))
-    if [ "$PassChar" != "0" ] && [ -n "$PassChar" ]; then
-        password="$PassChar"
-    else
-        password="$(random)"
-    fi
-    echo "${USER_PORT}${V4Port}/${password}/$IP4/$V4Port/$IP4"
+	V4Port=$((LAST_PORT + 1))
+	# Áp dụng logic tương tự cho proxy IPv4
+	if [ "$PASS" -eq 1 ] && [ -n "$FIXED_PASS" ]; then
+	    echo "${USER_PORT}${V4Port}/${FIXED_PASS}/$IP4/$V4Port/$IP4"
+	else
+	    echo "${USER_PORT}${V4Port}/$(random)/$IP4/$V4Port/$IP4"
+	fi
 }
 
 gen_iptables() {
@@ -133,9 +131,7 @@ gen_ifconfig() {
 $(awk -F "/" -v Eth="${Eth}" '{print "ifconfig " Eth " inet6 add " $5 "/64"}' ${WORKDATA} | sed '$d')
 EOF
 }
-
-# Main script
-echo "installing net-tools" > /root/log.txt
+echo "installing net-tools"  > /root/log.txt
 yum -y install wget gcc net-tools bsdtar zip >/dev/null
 
 cat << EOF > /etc/rc.d/rc.local
@@ -146,46 +142,47 @@ EOF
 echo "working folder = /home/Lowji194"
 WORKDIR="/home/Lowji194"
 WORKDATA="${WORKDIR}/data.txt"
-mkdir -p $WORKDIR && cd $_
+mkdir $WORKDIR && cd $_
 
-LowjiProxy
+LowjiProxy #call Install LowjiProxy
 
 Eth=$(ip addr show | grep -E '^2:' | sed 's/^[0-9]*: \(.*\):.*/\1/')
 IP6=$(curl -6 -s icanhazip.com | cut -f1-4 -d':')
 
-echo "Internal ip = ${IP4}. IPv6 = ${IP6}. Ethernet = ${Eth}"
+echo "Internal ip = ${IP4}. IPv6 = ${IP6}. Enether = ${Eth}"
 
 LAST_PORT=$(($FIRST_PORT + (Proxy_Count - 1)))
 echo "LAST_PORT is $LAST_PORT. Continue..."
 
-echo "Tạo data Proxy" > /root/log.txt
+echo "Tạo data Proxy"  > /root/log.txt
 gen_data >$WORKDIR/data.txt
 
-echo "Cấu hình iptables" > /root/log.txt
+echo "Cấu hình iptables"  > /root/log.txt
 gen_iptables >$WORKDIR/boot_iptables.sh
 
-echo "Cấu hình ifconfig" > /root/log.txt
+echo "Cấu hình ifconfig"  > /root/log.txt
 gen_ifconfig >$WORKDIR/boot_ifconfig.sh
 chmod +x boot_*.sh /etc/rc.local
 
-# Kiểm tra VLAN
+echo "KT VLAN"
 if [ "$VLAN" -eq 1 ]; then
-    echo "Đang tạo Proxy từ Mạng LAN" > /root/log.txt
+echo "Đang tạo Proxy từ Mạng LAN"  > /root/log.txt
     curl -sO https://raw.githubusercontent.com/nguyendollhp/Nguyendoll/main/VLAN.sh -P "${WORKDIR}"
-    chmod 0755 ${WORKDIR}/VLAN.sh
-    sed -i 's/\r$//' ${WORKDIR}/VLAN.sh
+chmod 0755 ${WORKDIR}/VLAN.sh
+sed -i 's/\r$//' ${WORKDIR}/VLAN.sh
 fi
 
-echo "Config Proxy cfg" > /root/log.txt
+echo "Config Proxy cfg"  > /root/log.txt
 gen_proxy >/usr/local/etc/LowjiConfig/UserProxy.cfg
 mv /usr/local/etc/LowjiConfig/bin/3proxy /usr/local/etc/LowjiConfig/bin/StartProxy
 
-echo "Boot Proxy" > /root/log.txt
+echo "Boot Proxy"  > /root/log.txt
 cat >/etc/rc.local <<EOF
 #!/bin/bash
 touch /var/lock/subsys/local
 EOF
 
+echo "Boot VLAN"   > /root/log.txt
 if [ "$VLAN" -eq 1 ]; then
     echo "bash ${WORKDIR}/VLAN.sh" >> /etc/rc.local
 fi
@@ -204,14 +201,15 @@ bash ${WORKDIR}/boot_ifconfig.sh 2>/dev/null
 echo "Start Proxy Services"
 startProxy
 
+# Vòng lặp kiểm tra StartProxy đã khởi động hay chưa
 while true; do
   if pgrep StartProxy >/dev/null; then
     echo "StartProxy đã hoạt động."
-    break
+    break  # Thoát khỏi vòng lặp nếu StartProxy đã khởi động
   else
     echo "StartProxy chưa hoạt động, thử khởi động lại..."
     startProxy
-    sleep 5
+    sleep 5  # Chờ 5 giây trước khi kiểm tra lại
   fi
 done
 
