@@ -110,7 +110,7 @@ gen_data() {
 	V4Port=$((LAST_PORT + 1))
 	# Áp dụng logic tương tự cho proxy IPv4
 	if [ "$PASS" -eq 1 ]; then
-	    echo "${USER_PORT}/LVCmedia123/$IP4/$V4Port/$IP4"
+	    echo "${USER_PORT}/Lvc12345#/$IP4/$V4Port/$IP4"
 	else
 	    echo "${USER_PORT}${V4Port}/$(random)/$IP4/$V4Port/$IP4"
 	fi
