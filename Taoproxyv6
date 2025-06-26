@@ -8,8 +8,6 @@ FIRST_PORT=10001
 #
 PASS=1
 #
-FIXED_PASS=""
-#
 IP4=$(curl -4 -s icanhazip.com)
 
 #!/bin/sh
@@ -102,19 +100,17 @@ gen_data() {
         done
         unique_ipv6_list+=("$ipv6")
 
-        # Kiểm tra xem có sử dụng password cố định hay không
-        if [ "$PASS" -eq 1 ] && [ -n "$FIXED_PASS" ]; then
-            # Sử dụng password cố định
-            echo "${USER_PORT}${port}/${FIXED_PASS}/$IP4/$port/$ipv6"
+        # Nếu PASS=1 thì dùng password cố định, ngược lại dùng random
+        if [ "$PASS" -eq 1 ]; then
+            echo "${USER_PORT}${port}/LVCmedia123/$IP4/$port/$ipv6"
         else
-            # Sử dụng password random hoặc không có password
             echo "${USER_PORT}${port}/$(random)/$IP4/$port/$ipv6"
         fi
     done
 	V4Port=$((LAST_PORT + 1))
 	# Áp dụng logic tương tự cho proxy IPv4
-	if [ "$PASS" -eq 1 ] && [ -n "$FIXED_PASS" ]; then
-	    echo "${USER_PORT}${V4Port}/${FIXED_PASS}/$IP4/$V4Port/$IP4"
+	if [ "$PASS" -eq 1 ]; then
+	    echo "${USER_PORT}${V4Port}/LVCmedia123/$IP4/$V4Port/$IP4"
 	else
 	    echo "${USER_PORT}${V4Port}/$(random)/$IP4/$V4Port/$IP4"
 	fi
